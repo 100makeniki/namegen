@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NAMEGEN — ゲームID・VTuber名・クラン名 生成ツール</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Syne:wght@400;700;800&family=Noto+Sans+JP:wght@300;400;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #080b10;
+  --surface: #0e1318;
+  --surface2: #141b22;
+  --border: #1e2a35;
+  --accent: #00e5ff;
+  --accent2: #ff3d6e;
+  --accent3: #b8ff57;
+  --text: #e8f0f8;
+  --muted: #4a6070;
+  --glow: rgba(0,229,255,0.15);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Noto Sans JP', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* GRID BG */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* NOISE */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.4;
+}
+
+/* HEADER */
+header {
+  position: relative;
+  z-index: 10;
+  padding: 2rem 3rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.logo {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 2.8rem;
+  letter-spacing: 0.15em;
+  color: var(--accent);
+  text-shadow: 0 0 30px rgba(0,229,255,0.5), 0 0 60px rgba(0,229,255,0.2);
+  line-height: 1;
+}
+.logo sub {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.55rem;
+  letter-spacing: 0.2em;
+  color: var(--muted);
+  display: block;
+  margin-top: 0.2rem;
+  text-transform: uppercase;
+}
+.header-badge {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.15em;
+  color: var(--accent3);
+  border: 1px solid var(--accent3);
+  padding: 0.3rem 0.8rem;
+  text-transform: uppercase;
+  animation: pulse 3s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%,100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* TAB NAV */
+nav {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+nav::-webkit-scrollbar { display: none; }
+.tab {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 1rem 2rem;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+  border-bottom: 2px solid transparent;
+  position: relative;
+}
+.tab:hover { color: var(--text); }
+.tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+.tab .tab-icon { margin-right: 0.5rem; }
+
+/* MAIN */
+main {
+  position: relative;
+  z-index: 10;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 3rem 2rem;
+}
+
+/* PANELS */
+.panel { display: none; }
+.panel.active { display: block; animation: fadeUp 0.3s ease; }
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.panel-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 2.5rem;
+  letter-spacing: 0.1em;
+  margin-bottom: 0.4rem;
+  line-height: 1;
+}
+.panel-desc {
+  font-size: 0.82rem;
+  color: var(--muted);
+  margin-bottom: 2.5rem;
+  letter-spacing: 0.03em;
+}
+
+/* OPTIONS GRID */
+.options-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 2rem;
+}
+.option-card {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  padding: 0.85rem 1rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  position: relative;
+  overflow: hidden;
+}
+.option-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--glow);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.option-card:hover::before { opacity: 1; }
+.option-card.selected {
+  border-color: var(--accent);
+  background: rgba(0,229,255,0.05);
+}
+.option-card.selected::after {
+  content: '✓';
+  position: absolute;
+  top: 0.4rem;
+  right: 0.6rem;
+  font-size: 0.7rem;
+  color: var(--accent);
+}
+.option-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 0.2rem;
+}
+.option-value {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* CONTROLS */
+.controls {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 2.5rem;
+  flex-wrap: wrap;
+}
+.count-control {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.7rem;
+  color: var(--muted);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.count-control input[type=range] {
+  accent-color: var(--accent);
+  width: 100px;
+}
+.count-val { color: var(--accent); font-weight: 700; min-width: 20px; }
+
+.generate-btn {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.3rem;
+  letter-spacing: 0.2em;
+  padding: 0.75rem 2.5rem;
+  background: var(--accent);
+  color: var(--bg);
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-transform: uppercase;
+  position: relative;
+  overflow: hidden;
+}
+.generate-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: white;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+.generate-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 30px rgba(0,229,255,0.3); }
+.generate-btn:active::before { opacity: 0.1; }
+.generate-btn:active { transform: translateY(0); }
+
+/* RESULTS */
+.results-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  margin-bottom: 1.5rem;
+}
+.result-card {
+  background: var(--surface);
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  transition: background 0.15s;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+.result-card:hover { background: var(--surface2); }
+.result-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--accent);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.result-card:hover::before { opacity: 1; }
+.result-name {
+  font-family: 'Syne', sans-serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  word-break: break-all;
+}
+.result-copy {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.6rem;
+  color: var(--muted);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transition: color 0.15s;
+}
+.result-card:hover .result-copy { color: var(--accent); }
+.result-card.copied { background: rgba(0,229,255,0.05); }
+.result-card.copied .result-copy { color: var(--accent3); }
+
+.hint {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.62rem;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  text-align: center;
+}
+
+/* SEPARATOR */
+.sep {
+  height: 1px;
+  background: var(--border);
+  margin: 2.5rem 0;
+}
+
+/* INPUT FIELD */
+.custom-input-row {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+.custom-input {
+  flex: 1;
+  min-width: 160px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: 'Space Mono', monospace;
+  font-size: 0.82rem;
+  padding: 0.7rem 1rem;
+  outline: none;
+  transition: border-color 0.15s;
+  letter-spacing: 0.05em;
+}
+.custom-input::placeholder { color: var(--muted); }
+.custom-input:focus { border-color: var(--accent); }
+.custom-input label-text {
+  font-size: 0.65rem;
+  color: var(--muted);
+  display: block;
+  margin-bottom: 0.3rem;
+}
+.input-wrap { flex: 1; min-width: 160px; }
+.input-wrap label {
+  display: block;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.6rem;
+  color: var(--muted);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 0.4rem;
+}
+
+/* FOOTER */
+footer {
+  position: relative;
+  z-index: 10;
+  text-align: center;
+  padding: 2rem;
+  border-top: 1px solid var(--border);
+  font-family: 'Space Mono', monospace;
+  font-size: 0.6rem;
+  color: var(--muted);
+  letter-spacing: 0.1em;
+}
+footer a { color: var(--muted); text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    NAMEGEN
+    <sub>Game Name Generator</sub>
+  </div>
+  <div class="header-badge">🟢 Free Tool</div>
+</header>
+
+<nav>
+  <button class="tab active" onclick="switchTab('game')" id="tab-game">
+    <span class="tab-icon">🎮</span>ゲームID
+  </button>
+  <button class="tab" onclick="switchTab('sns')" id="tab-sns">
+    <span class="tab-icon">💬</span>SNS / Discord
+  </button>
+  <button class="tab" onclick="switchTab('vtuber')" id="tab-vtuber">
+    <span class="tab-icon">🌸</span>VTuberネーム
+  </button>
+  <button class="tab" onclick="switchTab('clan')" id="tab-clan">
+    <span class="tab-icon">⚔️</span>クラン名
+  </button>
+</nav>
+
+<main>
+
+  <!-- ① ゲームID -->
+  <div class="panel active" id="panel-game">
+    <div class="panel-title">ゲームID 生成</div>
+    <div class="panel-desc">FPS・RPG・格ゲーなど、ジャンルに合ったゲーマータグを生成します</div>
+
+    <div class="options-grid" id="game-style-opts">
+      <div class="option-card selected" data-group="game-style" data-val="dark" onclick="toggleOpt(this)">
+        <div class="option-label">スタイル</div>
+        <div class="option-value">ダーク・クール</div>
+      </div>
+      <div class="option-card" data-group="game-style" data-val="cute" onclick="toggleOpt(this)">
+        <div class="option-label">スタイル</div>
+        <div class="option-value">キュート・ポップ</div>
+      </div>
+      <div class="option-card" data-group="game-style" data-val="strong" onclick="toggleOpt(this)">
+        <div class="option-label">スタイル</div>
+        <div class="option-value">強そう・迫力</div>
+      </div>
+      <div class="option-card" data-group="game-style" data-val="mystery" onclick="toggleOpt(this)">
+        <div class="option-label">スタイル</div>
+        <div class="option-value">ミステリアス</div>
+      </div>
+    </div>
+
+    <div class="options-grid">
+      <div class="option-card selected" data-group="game-num" data-val="yes" onclick="toggleOpt(this)">
+        <div class="option-label">数字</div>
+        <div class="option-value">数字あり</div>
+      </div>
+      <div class="option-card" data-group="game-num" data-val="no" onclick="toggleOpt(this)">
+        <div class="option-label">数字</div>
+        <div class="option-value">数字なし</div>
+      </div>
+      <div class="option-card selected" data-group="game-lang" data-val="en" onclick="toggleOpt(this)">
+        <div class="option-label">言語</div>
+        <div class="option-value">英語</div>
+      </div>
+      <div class="option-card" data-group="game-lang" data-val="jp" onclick="toggleOpt(this)">
+        <div class="option-label">言語</div>
+        <div class="option-value">日本語混じり</div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="count-control">
+        生成数
+        <input type="range" min="4" max="20" value="8" id="game-count" oninput="document.getElementById('game-count-val').textContent=this.value">
+        <span class="count-val" id="game-count-val">8</span>
+      </div>
+      <button class="generate-btn" onclick="generateGame()">GENERATE</button>
+    </div>
+
+    <div id="game-results"></div>
+  </div>
+
+  <!-- ② SNS/Discord -->
+  <div class="panel" id="panel-sns">
+    <div class="panel-title">SNS / Discord ID 生成</div>
+    <div class="panel-desc">Twitter・Instagram・Discordで使えるユニークなIDを生成します</div>
+
+    <div class="custom-input-row">
+      <div class="input-wrap">
+        <label>キーワード（任意）</label>
+        <input class="custom-input" id="sns-keyword" placeholder="好きな言葉を入れると反映されます">
+      </div>
+    </div>
+
+    <div class="options-grid">
+      <div class="option-card selected" data-group="sns-vibe" data-val="cool" onclick="toggleOpt(this)">
+        <div class="option-label">雰囲気</div>
+        <div class="option-value">クール系</div>
+      </div>
+      <div class="option-card" data-group="sns-vibe" data-val="kawaii" onclick="toggleOpt(this)">
+        <div class="option-label">雰囲気</div>
+        <div class="option-value">かわいい系</div>
+      </div>
+      <div class="option-card" data-group="sns-vibe" data-val="art" onclick="toggleOpt(this)">
+        <div class="option-label">雰囲気</div>
+        <div class="option-value">アート・個性的</div>
+      </div>
+      <div class="option-card" data-group="sns-vibe" data-val="simple" onclick="toggleOpt(this)">
+        <div class="option-label">雰囲気</div>
+        <div class="option-value">シンプル</div>
+      </div>
+    </div>
+
+    <div class="options-grid">
+      <div class="option-card selected" data-group="sns-sep" data-val="none" onclick="toggleOpt(this)">
+        <div class="option-label">区切り</div>
+        <div class="option-value">なし</div>
+      </div>
+      <div class="option-card" data-group="sns-sep" data-val="dot" onclick="toggleOpt(this)">
+        <div class="option-label">区切り</div>
+        <div class="option-value">ドット (a.b)</div>
+      </div>
+      <div class="option-card" data-group="sns-sep" data-val="under" onclick="toggleOpt(this)">
+        <div class="option-label">区切り</div>
+        <div class="option-value">アンダー (a_b)</div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="count-control">
+        生成数
+        <input type="range" min="4" max="20" value="8" id="sns-count" oninput="document.getElementById('sns-count-val').textContent=this.value">
+        <span class="count-val" id="sns-count-val">8</span>
+      </div>
+      <button class="generate-btn" onclick="generateSNS()">GENERATE</button>
+    </div>
+
+    <div id="sns-results"></div>
+  </div>
+
+  <!-- ③ VTuberネーム -->
+  <div class="panel" id="panel-vtuber">
+    <div class="panel-title">VTuberネーム 生成</div>
+    <div class="panel-desc">配信活動・バーチャルキャラクターにぴったりの名前を生成します</div>
+
+    <div class="options-grid">
+      <div class="option-card selected" data-group="vt-type" data-val="fantasy" onclick="toggleOpt(this)">
+        <div class="option-label">キャラタイプ</div>
+        <div class="option-value">ファンタジー</div>
+      </div>
+      <div class="option-card" data-group="vt-type" data-val="moe" onclick="toggleOpt(this)">
+        <div class="option-label">キャラタイプ</div>
+        <div class="option-value">萌え・アイドル</div>
+      </div>
+      <div class="option-card" data-group="vt-type" data-val="cool" onclick="toggleOpt(this)">
+        <div class="option-label">キャラタイプ</div>
+        <div class="option-value">クール・大人</div>
+      </div>
+      <div class="option-card" data-group="vt-type" data-val="demon" onclick="toggleOpt(this)">
+        <div class="option-label">キャラタイプ</div>
+        <div class="option-value">悪魔・ダーク</div>
+      </div>
+      <div class="option-card" data-group="vt-type" data-val="animal" onclick="toggleOpt(this)">
+        <div class="option-label">キャラタイプ</div>
+        <div class="option-value">獣人・動物</div>
+      </div>
+      <div class="option-card" data-group="vt-type" data-val="mecha" onclick="toggleOpt(this)">
+        <div class="option-label">キャラタイプ</div>
+        <div class="option-value">メカ・SF</div>
+      </div>
+    </div>
+
+    <div class="options-grid">
+      <div class="option-card selected" data-group="vt-lang" data-val="jp" onclick="toggleOpt(this)">
+        <div class="option-label">言語</div>
+        <div class="option-value">日本語</div>
+      </div>
+      <div class="option-card" data-group="vt-lang" data-val="en" onclick="toggleOpt(this)">
+        <div class="option-label">言語</div>
+        <div class="option-value">英語・カタカナ</div>
+      </div>
+      <div class="option-card" data-group="vt-lang" data-val="mix" onclick="toggleOpt(this)">
+        <div class="option-label">言語</div>
+        <div class="option-value">ミックス</div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="count-control">
+        生成数
+        <input type="range" min="4" max="20" value="8" id="vt-count" oninput="document.getElementById('vt-count-val').textContent=this.value">
+        <span class="count-val" id="vt-count-val">8</span>
+      </div>
+      <button class="generate-btn" onclick="generateVtuber()">GENERATE</button>
+    </div>
+
+    <div id="vt-results"></div>
+  </div>
+
+  <!-- ④ クラン名 -->
+  <div class="panel" id="panel-clan">
+    <div class="panel-title">クラン名 生成</div>
+    <div class="panel-desc">ゲームのチーム・ギルド・クランにかっこいい名前をつけます</div>
+
+    <div class="options-grid">
+      <div class="option-card selected" data-group="clan-type" data-val="military" onclick="toggleOpt(this)">
+        <div class="option-label">スタイル</div>
+        <div class="option-value">ミリタリー系</div>
+      </div>
+      <div class="option-card" data-group="clan-type" data-val="fantasy" onclick="toggleOpt(this)">
+        <div class="option-label">スタイル</div>
+        <div class="option-value">ファンタジー系</div>
+      </div>
+      <div class="option-card" data-group="clan-type" data-val="beast" onclick="toggleOpt(this)">
+        <div class="option-label">スタイル</div>
+        <div class="option-value">猛獣・自然系</div>
+      </div>
+      <div class="option-card" data-group="clan-type" data-val="cyber" onclick="toggleOpt(this)">
+        <div class="option-label">スタイル</div>
+        <div class="option-value">サイバー・SF系</div>
+      </div>
+    </div>
+
+    <div class="options-grid">
+      <div class="option-card selected" data-group="clan-prefix" data-val="yes" onclick="toggleOpt(this)">
+        <div class="option-label">タグ</div>
+        <div class="option-value">クランタグあり</div>
+      </div>
+      <div class="option-card" data-group="clan-prefix" data-val="no" onclick="toggleOpt(this)">
+        <div class="option-label">タグ</div>
+        <div class="option-value">クランタグなし</div>
+      </div>
+      <div class="option-card selected" data-group="clan-lang" data-val="en" onclick="toggleOpt(this)">
+        <div class="option-label">言語</div>
+        <div class="option-value">英語</div>
+      </div>
+      <div class="option-card" data-group="clan-lang" data-val="jp" onclick="toggleOpt(this)">
+        <div class="option-label">言語</div>
+        <div class="option-value">日本語</div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="count-control">
+        生成数
+        <input type="range" min="4" max="20" value="8" id="clan-count" oninput="document.getElementById('clan-count-val').textContent=this.value">
+        <span class="count-val" id="clan-count-val">8</span>
+      </div>
+      <button class="generate-btn" onclick="generateClan()">GENERATE</button>
+    </div>
+
+    <div id="clan-results"></div>
+  </div>
+<div class="sep"></div>
+
+  <div class="panel-title" style="font-size: 1.8rem; margin-bottom: 1.5rem;">RECOMMENDED COLUMNS</div>
+  <div class="options-grid" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));">
+    <div class="option-card" onclick="location.href='column1.html'">
+      <div class="option-label">COLUMN 01</div>
+      <div class="option-value" style="font-size: 0.8rem; font-weight: 400; margin-top: 0.3rem;">FPSで強そうに見える英語IDの法則</div>
+    </div>
+    <div class="option-card" onclick="location.href='column2.html'">
+      <div class="option-label">COLUMN 02</div>
+      <div class="option-value" style="font-size: 0.8rem; font-weight: 400; margin-top: 0.3rem;">「すでに使われています」を回避するID術</div>
+    </div>
+    <div class="option-card" onclick="location.href='column3.html'">
+      <div class="option-label">COLUMN 03</div>
+      <div class="option-value" style="font-size: 0.8rem; font-weight: 400; margin-top: 0.3rem;">ファンを惹きつけるVTuberのネーミング</div>
+    </div>
+    <div class="option-card" onclick="location.href='column4.html'">
+      <div class="option-label">COLUMN 04</div>
+      <div class="option-value" style="font-size: 0.8rem; font-weight: 400; margin-top: 0.3rem;">世界に通用するクラン名の方程式</div>
+    </div>
+    <div class="option-card" onclick="location.href='column5.html'">
+      <div class="option-label">COLUMN 05</div>
+      <div class="option-value" style="font-size: 0.8rem; font-weight: 400; margin-top: 0.3rem;">愛着が湧く名前とは？ネーミング心理学</div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  © 2026 NAMEGEN &nbsp;|&nbsp; 
+  <a href="about.html">ABOUT</a> &nbsp;|&nbsp; 
+  <a href="contact.html">CONTACT</a> &nbsp;|&nbsp; 
+  <a href="privacy.html">PRIVACY POLICY</a>
+</footer>
+
+<script>
+// ---- TAB SWITCH ----
+function switchTab(id) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('panel-' + id).classList.add('active');
+  document.getElementById('tab-' + id).classList.add('active');
+}
+
+// ---- OPTION TOGGLE (single select per group) ----
+function toggleOpt(el) {
+  const group = el.dataset.group;
+  document.querySelectorAll(`[data-group="${group}"]`).forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function getOpt(group) {
+  const el = document.querySelector(`[data-group="${group}"].selected`);
+  return el ? el.dataset.val : null;
+}
+
+// ---- COPY ----
+function copyName(el, name) {
+  navigator.clipboard.writeText(name).then(() => {
+    el.classList.add('copied');
+    el.querySelector('.result-copy').textContent = '✓ コピー済み';
+    setTimeout(() => {
+      el.classList.remove('copied');
+      el.querySelector('.result-copy').textContent = 'クリックでコピー';
+    }, 1500);
+  });
+}
+
+function renderResults(containerId, names) {
+  const html = names.map(n => `
+    <div class="result-card" onclick="copyName(this,'${n.replace(/'/g,"\\'")}')">
+      <div class="result-name">${n}</div>
+      <div class="result-copy">クリックでコピー</div>
+    </div>`).join('');
+  document.getElementById(containerId).innerHTML = `
+    <div class="results-grid">${html}</div>
+    <div class="hint">// クリックでクリップボードにコピー</div>`;
+}
+
+// ---- DATA ----
+const D = {
+  dark_pre: ['Shadow','Void','Nox','Dark','Grim','Dusk','Ash','Raven','Night','Steel','Iron','Frost','Sable','Obsidian','Phantom'],
+  dark_suf: ['blade','striker','wolf','fang','hunter','reaper','edge','kill','shot','sniper','ghost','fury','claw','mark','void'],
+  cute_pre: ['Mochi','Yuki','Hana','Suki','Poko','Mimi','Kira','Nana','Luna','Hoshi','Furi','Chibi','Pachi','Coco','Lulu'],
+  cute_suf: ['chan','pyon','rin','tan','chi','nyan','maru','hime','moe','pop','star','drop','leaf','sugar','bloom'],
+  strong_pre: ['Titan','Rex','Doom','Blaze','Storm','Rage','Crest','Valor','Forge','Apex','Prime','Dread','Wrath','Surge','Brute'],
+  strong_suf: ['crusher','breaker','slayer','force','fist','surge','strike','bomb','slam','ruin','lord','king','warlord','titan','demon'],
+  mystery_pre: ['Cipher','Wraith','Specter','Mirage','Veil','Abyss','Enigma','Hex','Omen','Arcane','Null','Limbo','Echo','Sigil','Rune'],
+  mystery_suf: ['walker','weaver','seeker','drifter','keeper','watcher','stalker','shade','trace','whisper','signal','codec','protocol','cipher','null'],
+  jp_words: ['影','刃','炎','夜','雷','嵐','鋼','霧','闇','光','月','星','翼','獣','竜'],
+
+  sns_cool: ['nxght','vltx','krvn','zphyr','obsdn','eclps','nvoid','xsync','krypt','vrtx','nxus','zlpha','xnova','kblck','vnull'],
+  sns_kawaii: ['yumemi','haruhi','sakuran','momochi','ichigo','yukiho','hinata','kirara','nonono','moemoe','fuwafu','pikarin','cocona','kurumi','nishiki'],
+  sns_art: ['glitch_','void_','null_','404_','pixel_','static_','noise_','render_','vector_','patch_','fork_','merge_','alpha_','beta_','delta_'],
+  sns_simple: ['wave','drift','calm','still','plain','clear','open','flow','soft','pure','mild','lean','thin','bare','neat'],
+
+  vt_fantasy_jp: ['天羽','月詠','星夜','翠嵐','紫苑','蒼龍','神楽','朱雀','白虎','玄武','桜華','夕凪','暁光','虹架','霞月'],
+  vt_fantasy_en: ['Celestia','Lumina','Astraea','Soleil','Vespera','Aurora','Selene','Lyra','Aria','Nova','Zephyra','Elara','Cressida','Thessaly','Neria'],
+  vt_moe_jp: ['ももか','ゆいな','あかり','ことね','みおな','さくら','はるか','なつめ','ふわり','ひかり','のあ','りりか','みこと','ちさと','あやね'],
+  vt_cool: ['Lexa','Vex','Kira','Zara','Nyx','Sable','Vera','Crypt','Iris','Lace','Hex','Raze','Veil','Mira','Onyx'],
+  vt_demon: ['Belial','Astaroth','Lilith','Malphas','Zepar','Seere','Valak','Naberius','Sitri','Haures','Forneus','Leraje','Gaap','Bifrons','Shax'],
+  vt_animal: ['キツネ丸','狼牙','白鷺','虎徹','黒豹','翠鳥','蒼鷹','雪狐','獅子丸','龍虎','朱鷺','玄鹿','白熊','金狼','銀兎'],
+  vt_mecha: ['Unit-07','Nexus-X','Core9','Sigma-V','Omega-0','Delta-R','Alpha-Z','Bolt-EX','Grid-01','Arc-V','Pulse-K','Node-9','Sync-X','Flux-3','Qubit'],
+
+  clan_mil_en: ['Iron Legion','Steel Wolves','Shadow Force','Black Ops','Delta Squad','Ghost Team','Viper Unit','Recon Alpha','Bravo Storm','Echo Strike','Night Raid','Omega Force','Phantom Team','Rogue Unit','Apex Squad'],
+  clan_fantasy_en: ['Dragon Lords','Shadow Guild','Iron Brotherhood','Crimson Order','Dark Alliance','Storm Knights','Blood Moon','Silver Aegis','Void Walkers','Steel Covenant','Ember Circle','Frost Pact','Thunder Clan','Night Watch','Dawn Breakers'],
+  clan_beast_en: ['Iron Wolves','Shadow Panthers','Steel Eagles','Crimson Bears','Dark Tigers','Storm Ravens','Blood Hawks','Silver Lions','Void Sharks','Black Cobras','Thunder Bulls','Frost Foxes','Flame Jaguars','Stone Gorillas','Wild Boars'],
+  clan_cyber_en: ['NetRunners','DataBreach','CyberForce','PixelStorm','GridHackers','ByteSquad','NullPointer','SyncError','GlitchTeam','CoreDump','RootAccess','ZeroDay','CipherClan','HexForce','BinaryStrike'],
+  clan_mil_jp: ['鉄の狼','影の部隊','黒の傭兵団','嵐の旅団','夜叉隊','烈火軍団','疾風隊','雷神部隊','暗黒騎士団','獅子軍団'],
+  clan_fantasy_jp: ['竜の盟約','影の騎士団','鋼の同盟','紅蓮の会','闇の結社','嵐の一族','血盟団','銀の翼','虚空の旅者','夜明けの剣士'],
+
+  clan_tags_mil: ['[IRL]','[SF]','[OPS]','[GHO]','[VIP]','[DLT]','[BRV]','[ECH]','[NIT]','[OMG]'],
+  clan_tags_fantasy: ['[DRG]','[SHD]','[IRN]','[CRM]','[VID]','[STM]','[BLD]','[SLV]','[EMB]','[FRS]'],
+  clan_tags_cyber: ['[SYN]','[DAT]','[HEX]','[NUL]','[BYT]','[RTX]','[GLT]','[COR]','[ZRD]','[BIN]'],
+  clan_tags_beast: ['[WLF]','[PNT]','[EGL]','[TGR]','[BER]','[RVN]','[LIN]','[CBR]','[FOX]','[JGR]'],
+};
+
+function rnd(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function rndNum(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5); }
+
+// ---- GENERATORS ----
+function generateGame() {
+  const style = getOpt('game-style');
+  const useNum = getOpt('game-num') === 'yes';
+  const usejp = getOpt('game-lang') === 'jp';
+  const count = parseInt(document.getElementById('game-count').value);
+  const pre = D[style + '_pre'];
+  const suf = D[style + '_suf'];
+  const names = [];
+  for (let i = 0; i < count; i++) {
+    let name;
+    if (usejp && Math.random() > 0.5) {
+      name = rnd(D.jp_words) + rnd(suf);
+    } else {
+      name = rnd(pre) + rnd(suf);
+    }
+    if (useNum) name += rndNum(1, 999);
+    names.push(name);
+  }
+  renderResults('game-results', names);
+}
+
+function generateSNS() {
+  const vibe = getOpt('sns-vibe');
+  const sep = getOpt('sns-sep');
+  const count = parseInt(document.getElementById('sns-count').value);
+  const keyword = document.getElementById('sns-keyword').value.trim().toLowerCase();
+  const pool = D['sns_' + vibe];
+  const names = [];
+  const seps = { none: '', dot: '.', under: '_' };
+  const s = seps[sep] || '';
+  for (let i = 0; i < count; i++) {
+    let base = rnd(pool);
+    let name;
+    if (keyword && Math.random() > 0.4) {
+      name = Math.random() > 0.5 ? keyword + s + base : base + s + keyword;
+    } else {
+      const b2 = rnd(pool);
+      name = base + s + b2;
+    }
+    if (Math.random() > 0.6) name += rndNum(0, 99);
+    names.push(name);
+  }
+  renderResults('sns-results', names);
+}
+
+function generateVtuber() {
+  const type = getOpt('vt-type');
+  const lang = getOpt('vt-lang');
+  const count = parseInt(document.getElementById('vt-count').value);
+  const names = [];
+  const pools = {
+    fantasy: { jp: D.vt_fantasy_jp, en: D.vt_fantasy_en },
+    moe: { jp: D.vt_moe_jp, en: D.vt_moe_jp },
+    cool: { jp: D.vt_cool, en: D.vt_cool },
+    demon: { jp: D.vt_demon, en: D.vt_demon },
+    animal: { jp: D.vt_animal, en: D.vt_animal },
+    mecha: { jp: D.vt_mecha, en: D.vt_mecha },
+  };
+  const p = pools[type] || pools.fantasy;
+  for (let i = 0; i < count; i++) {
+    let name;
+    if (lang === 'mix') {
+      name = Math.random() > 0.5 ? rnd(p.jp) : rnd(p.en);
+    } else if (lang === 'en') {
+      name = rnd(p.en);
+    } else {
+      name = rnd(p.jp);
+    }
+    // Add honorific for JP
+    if (lang === 'jp' && (type === 'fantasy' || type === 'moe') && Math.random() > 0.6) {
+      const hon = ['・星','・月','・光','・花','・夜','・雪'][Math.floor(Math.random()*6)];
+      name += hon;
+    }
+    names.push(name);
+  }
+  renderResults('vt-results', names);
+}
+
+function generateClan() {
+  const type = getOpt('clan-type');
+  const useTag = getOpt('clan-prefix') === 'yes';
+  const lang = getOpt('clan-lang');
+  const count = parseInt(document.getElementById('clan-count').value);
+  const key = `clan_${type}_${lang}`;
+  const fallback = `clan_${type}_en`;
+  const pool = D[key] || D[fallback] || D.clan_mil_en;
+  const tagPool = D[`clan_tags_${type}`] || D.clan_tags_mil;
+  const names = shuffle(pool).slice(0, count);
+  const result = names.map(n => useTag ? `${rnd(tagPool)} ${n}` : n);
+  renderResults('clan-results', result);
+}
+
+// Auto-generate on load
+generateGame();
+</script>
+</body>
+</html>
